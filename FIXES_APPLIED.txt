@@ -1,0 +1,20 @@
+SplitBrain - Applied audit fixes
+
+Applied changes:
+1. Updated .gitignore to ignore Firebase sensitive files and .env files.
+2. Replaced firestore.rules with stricter validation rules aligned to the actual project schema.
+3. Updated user bootstrap to stop creating role='user' on self-created profile docs.
+4. Moved freezed_annotation and json_annotation to dependencies in pubspec.yaml.
+5. Removed firebase_storage from pubspec.yaml.
+6. Relaxed Dart SDK constraint to >=3.3.0 <4.0.0.
+7. Strengthened analysis_options.yaml lint rules.
+8. Removed firebase_storage references from generated registrant files included in the archive.
+
+Important manual follow-up on your machine:
+- Run: flutter pub get
+- Run: flutter analyze
+- Run: firebase deploy --only firestore:rules
+- If sensitive Firebase files were ever pushed to any remote repo, rotate/regenerate Firebase app credentials.
+
+Note:
+These environment-dependent commands could not be executed in this container because Flutter, Dart, and Firebase CLI are not installed here.

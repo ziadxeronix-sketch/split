@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "481621312355",
+    "project_id": "splitbrain-f557d",
+    "storage_bucket": "splitbrain-f557d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:481621312355:android:7239b2bdc38a8420574956",
+        "android_client_info": {
+          "package_name": "com.example.splitbrain"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBRueoY3efVjho1BxuxniY6qT3bojWFI30"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
