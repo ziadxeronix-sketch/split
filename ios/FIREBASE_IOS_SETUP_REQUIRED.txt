@@ -1,0 +1,17 @@
+IMPORTANT - COMPLETE THESE STEPS BEFORE RUNNING PHONE AUTH ON A REAL IPHONE
+
+1) Download GoogleService-Info.plist for the iOS app from Firebase Console.
+2) Copy it to ios/Runner/GoogleService-Info.plist
+3) Open that plist and copy the value of REVERSED_CLIENT_ID
+4) Open ios/Runner/Info.plist
+5) Replace REPLACE_WITH_REVERSED_CLIENT_ID with the real REVERSED_CLIENT_ID value
+6) In Xcode add capabilities:
+   - Push Notifications
+   - Background Modes > Remote notifications
+7) Upload APNs key/certificate in Firebase Console > Project Settings > Cloud Messaging
+8) Make sure Bundle ID in Xcode exactly matches Firebase iOS app bundle ID
+9) Run: flutter clean && flutter pub get && cd ios && pod install
+
+Notes:
+- A template file has been added at ios/Runner/GoogleService-Info.plist.template
+- Do NOT leave placeholder values in production.
