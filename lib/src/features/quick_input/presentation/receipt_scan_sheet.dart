@@ -46,13 +46,80 @@ class _ReceiptScanSheetState extends ConsumerState<ReceiptScanSheet> {
       final text = result.text;
       _note.text = text.split('\n').take(3).join(' · ');
 
-      final matches = RegExp(r'(\d+[\.,]\d{2})').allMatches(text);
+      // 1) استخرج كل الأرقام المحتملة مع السطر اللي فيها
+      final lines = text.split('\n');
+      final amountRegex = RegExp(r'(\d+[\.,]\d{2})');
       double best = 0;
-      for (final m in matches) {
-        final v = double.tryParse(m.group(1)!.replaceAll(',', '.')) ?? 0;
-        if (v > best) best = v;
+      double? keywordAmount;
+
+      final totalKeywords = [
+        'total',
+        'grand total',
+        'amount due',
+        'balance due',
+        'subtotal',
+      ];
+
+      for (final line in lines) {
+        final matches = amountRegex.allMatches(line);
+        if (matches.isEmpty) continue;
+
+        final hasKeyword = totalKeywords.any((k) => line.toLowerCase().contains(k));
+
+        for (final m in matches) {
+          final v = double.tryParse(m.group(1)!.replaceAll(',', '.')) ?? 0;
+          if (hasKeyword) {
+            // لو السطر فيه كلمة "الإجمالي" أو "TOTAL" اعتبره المرشح الأقوى
+            if (keywordAmount == null || v >= (keywordAmount ?? 0)) {
+              keywordAmount = v;
+            }
+          }
+          if (v > best) best = v;
+        }
       }
-      if (best > 0) _amount.text = best.toStringAsFixed(2);
+
+      final chosen = keywordAmount ?? best;
+      if (chosen > 0) _amount.text = chosen.toStringAsFixed(2);
+
+      // 2) حاول تخمين الكاتيجوري بناءً على النص والفئات الحالية
+      final cats = ref.read(categoriesProvider).asData?.value ?? const [];
+      if (cats.isNotEmpty) {
+        final lower = text.toLowerCase();
+        String? suggested;
+
+        // كلمات مفتاحية عامة (إنجليزي فقط)
+        if (lower.contains('restaurant') || lower.contains('meal') || lower.contains('food')) {
+          suggested = 'food';
+        } else if (lower.contains('coffee') || lower.contains('cafe')) {
+          suggested = 'coffee';
+        } else if (lower.contains('market') || lower.contains('supermarket') || lower.contains('grocery')) {
+          suggested = 'groceries';
+        } else if (lower.contains('uber') || lower.contains('taxi') || lower.contains('bus') || lower.contains('train')) {
+          suggested = 'transport';
+        } else if (lower.contains('pharmacy')) {
+          suggested = 'health';
+        }
+
+        // طابقها مع الكاتيجوريات الفعلية إن وُجدت، أو جرب الأسماء مباشرةً
+        String? catId;
+        if (suggested != null && cats.any((c) => c.id == suggested)) {
+          catId = suggested;
+        } else {
+          for (final c in cats) {
+            final name = c.name.toLowerCase();
+            if (lower.contains(name)) {
+              catId = c.id;
+              break;
+            }
+          }
+        }
+
+        if (catId != null) {
+          setState(() {
+            _cat = catId!;
+          });
+        }
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -81,12 +148,32 @@ class _ReceiptScanSheetState extends ConsumerState<ReceiptScanSheet> {
             source: 'ocr',
           );
       await ref.read(notificationCoordinatorProvider).evaluateAfterExpenseAdded(
-            latestAmount: amount,
-            categoryId: _cat,
-          );
-      await ref.read(statsRepositoryProvider).onExpenseAdded(createdAt: DateTime.now());
+        latestAmount: amount,
+        categoryId: _cat,
+      );
+      final statsRepo = ref.read(statsRepositoryProvider);
+      final before = await statsRepo.watch().first;
+      final updated = await statsRepo.onExpenseAdded(createdAt: DateTime.now());
+      final gainedXp = updated.points - before.points;
       if (!mounted) return;
       Navigator.pop(context);
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            gainedXp > 0
+                ? 'Receipt scanned • +$gainedXp XP'
+                : 'Receipt scanned',
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+          ),
+          backgroundColor: AppTheme.violetPrimary,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          duration: const Duration(seconds: 3),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

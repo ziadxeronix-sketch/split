@@ -2,17 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/notifications/notification_coordinator.dart';
 import '../../../theme/app_theme.dart';
 import '../../budget/presentation/budget_providers.dart';
 import '../../categories/presentation/categories_providers.dart';
+import '../../../core/notifications/notification_coordinator.dart';
+import '../../gamification/presentation/gamification_providers.dart';
 import '../../quick_input/presentation/receipt_scan_sheet.dart';
 import '../../quick_input/presentation/voice_input_sheet.dart';
-import '../../gamification/presentation/gamification_providers.dart';
 import 'transactions_providers.dart';
 
 class AddExpenseSheet extends ConsumerStatefulWidget {
-  const AddExpenseSheet({super.key});
+  const AddExpenseSheet({super.key, this.initialCategoryId});
+
+  final String? initialCategoryId;
 
   @override
   ConsumerState<AddExpenseSheet> createState() => _AddExpenseSheetState();
@@ -21,8 +23,14 @@ class AddExpenseSheet extends ConsumerStatefulWidget {
 class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
   final _amount = TextEditingController();
   final _note = TextEditingController();
-  String _cat = 'food';
+  late String _cat;
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _cat = widget.initialCategoryId ?? 'food';
+  }
 
   @override
   void dispose() {
@@ -49,19 +57,57 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
     setState(() => _saving = true);
     try {
       await ref.read(transactionsRepositoryProvider).add(
-            amount: amount,
-            categoryId: _cat,
-            note: _note.text.trim().isEmpty ? null : _note.text.trim(),
-          );
+        amount: amount,
+        categoryId: _cat,
+        note: _note.text.trim().isEmpty ? null : _note.text.trim(),
+      );
 
+      // Gamification + smart notifications
       await ref.read(notificationCoordinatorProvider).evaluateAfterExpenseAdded(
-            latestAmount: amount,
-            categoryId: _cat,
-          );
+        latestAmount: amount,
+        categoryId: _cat,
+      );
+      final statsRepo = ref.read(statsRepositoryProvider);
+      final before = await statsRepo.watch().first;
+      final updated = await statsRepo.onExpenseAdded(createdAt: DateTime.now());
+      final gainedXp = updated.points - before.points;
 
-      await ref.read(statsRepositoryProvider).onExpenseAdded(createdAt: DateTime.now());
+      if (!mounted) return;
 
-      if (mounted) Navigator.of(context).pop();
+      Navigator.of(context).pop();
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            gainedXp > 0
+                ? 'Expense added • +$gainedXp XP'
+                : 'Expense added',
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+          ),
+          backgroundColor: AppTheme.violetPrimary,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          duration: const Duration(seconds: 3),
+          action: SnackBarAction(
+            label: 'Add another',
+            textColor: Colors.white,
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                showDragHandle: true,
+                backgroundColor: AppTheme.whiteMain,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                ),
+                builder: (_) => AddExpenseSheet(initialCategoryId: _cat),
+              );
+            },
+          ),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -161,7 +207,10 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
           catsAsync.when(
             data: (cats) {
               if (cats.isNotEmpty && !cats.any((c) => c.id == _cat)) {
-                _cat = cats.first.id;
+                _cat = widget.initialCategoryId != null &&
+                        cats.any((c) => c.id == widget.initialCategoryId)
+                    ? widget.initialCategoryId!
+                    : cats.first.id;
               }
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20),

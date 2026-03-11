@@ -90,6 +90,11 @@ class NotificationsHistorySheet extends ConsumerWidget {
           Flexible(
             child: historyAsync.when(
               data: (history) {
+                // Mark all as read once history is shown so badge count resets.
+                ref.read(notificationHistoryServiceProvider).markAllRead().then((_) {
+                  ref.invalidate(notificationHistoryProvider);
+                  ref.invalidate(notificationUnreadCountProvider);
+                });
                 if (history.isEmpty) {
                   return SingleChildScrollView(
                     child: _buildEmptyState(),

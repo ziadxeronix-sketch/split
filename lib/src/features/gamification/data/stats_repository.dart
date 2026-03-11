@@ -61,7 +61,15 @@ class StatsRepository {
       _unlockBadges(total: total, streak: streak, badges: badges);
 
       final newUnlockCount = badges.length - current.badges.toSet().length;
-      final points = current.points + 15 + (streak > current.streakCount ? 5 : 0) + (newUnlockCount * 20);
+
+      // أكثر احترافية: نقاط مبنية على الحجم + الاستمرارية + فتح البادجات
+      // - 10 نقاط لكل إدخال جديد
+      // - 2 نقطة عن كل يوم في الـ streak الحالي
+      // - 25 نقطة لكل بادج جديدة
+      final basePoints = 10;
+      final streakBonus = streak * 2;
+      final badgeBonus = newUnlockCount * 25;
+      final points = current.points + basePoints + streakBonus + badgeBonus;
 
       final updated = UserStats(
         streakCount: streak,
@@ -83,14 +91,19 @@ class StatsRepository {
     required int streak,
     required Set<String> badges,
   }) {
-    if (total >= 1) badges.add('starter_spark');
-    if (total >= 5) badges.add('expense_explorer');
-    if (streak >= 3) badges.add('consistency_starter');
-    if (total >= 15) badges.add('budget_builder');
-    if (streak >= 7) badges.add('streak_champion');
-    if (total >= 30) badges.add('money_master');
+    // Core badges (حديثة)
+    if (total >= 1) badges.add('starter_spark'); // أول مصروف
+    if (total >= 10) badges.add('expense_explorer'); // 10 إدخالات
+    if (total >= 25) badges.add('habit_builder'); // 25 إدخال
+    if (total >= 50) badges.add('money_master'); // 50 إدخال
+    if (total >= 100) badges.add('centurion'); // 100 إدخال
 
-    // legacy compatibility so older UI/state still makes sense if referenced anywhere
+    if (streak >= 3) badges.add('consistency_starter'); // 3 أيام متتالية
+    if (streak >= 7) badges.add('streak_champion'); // أسبوع كامل
+    if (streak >= 14) badges.add('habit_keeper'); // أسبوعين متتاليين
+    if (streak >= 30) badges.add('discipline_legend'); // شهر متواصل
+
+    // legacy compatibility so older UI/state still makes sense إذا استُخدمت في مكان آخر
     if (total >= 1) badges.add('first_expense');
     if (total >= 10) badges.add('ten_entries');
     if (total >= 50) badges.add('fifty_entries');

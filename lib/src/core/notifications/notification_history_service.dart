@@ -44,4 +44,15 @@ class NotificationHistoryService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);
   }
+
+  Future<void> markAllRead() async {
+    final prefs = await SharedPreferences.getInstance();
+    final current = await getHistory();
+    final updated = current.map((e) => e.copyWith(isRead: true)).toList();
+
+    await prefs.setStringList(
+      _key,
+      updated.map((e) => jsonEncode(e.toJson())).toList(),
+    );
+  }
 }

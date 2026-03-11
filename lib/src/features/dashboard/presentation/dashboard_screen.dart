@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:splitbrain/src/features/gamification/domain/gamification_badges.dart';
+import 'package:splitbrain/src/features/gamification/presentation/gamification_providers.dart';
+import 'package:splitbrain/src/features/gamification/presentation/gamification_screen.dart';
 
 import '../../../core/date_utils.dart';
+import '../../../core/notifications/notification_providers.dart';
 import '../../../theme/app_theme.dart';
 import '../../budget/presentation/budget_providers.dart';
 import '../../categories/presentation/categories_providers.dart';
-import '../../gamification/domain/gamification_badges.dart';
-import '../../gamification/presentation/gamification_providers.dart';
-import '../../gamification/presentation/gamification_screen.dart';
+import '../../transactions/presentation/add_expense_sheet.dart';
 import 'notifications_history_sheet.dart';
 import '../presentation/dashboard_providers.dart';
 
@@ -61,6 +63,7 @@ class DashboardScreen extends ConsumerWidget {
     final range = ref.watch(dashboardRangeProvider);
     final summaryAsync = ref.watch(dashboardSummaryProvider);
     final budgetAsync = ref.watch(activeBudgetProvider);
+    final unreadAsync = ref.watch(notificationUnreadCountProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -113,9 +116,22 @@ class DashboardScreen extends ConsumerWidget {
                 actions: [
                   Padding(
                     padding: const EdgeInsets.only(right: 16),
-                    child: _CircleActionButton(
-                      icon: Icons.notifications_none_rounded,
-                      onTap: () => _showNotifications(context),
+                    child: unreadAsync.when(
+                      data: (count) => _CircleActionButton(
+                        icon: Icons.notifications_none_rounded,
+                        onTap: () => _showNotifications(context),
+                        badgeCount: count,
+                      ),
+                      loading: () => _CircleActionButton(
+                        icon: Icons.notifications_none_rounded,
+                        onTap: () => _showNotifications(context),
+                        badgeCount: 0,
+                      ),
+                      error: (_, __) => _CircleActionButton(
+                        icon: Icons.notifications_none_rounded,
+                        onTap: () => _showNotifications(context),
+                        badgeCount: 0,
+                      ),
                     ),
                   ),
                 ],
@@ -138,13 +154,9 @@ class DashboardScreen extends ConsumerWidget {
                         loading: () => _buildLoadingCard(context),
                         error: (e, _) => Text('Error: $e'),
                       ),
-
-                      const SizedBox(height: 40),
-                      _buildSectionHeader(context, 'Smart Insights'),
                       const SizedBox(height: 20),
-                      _buildStreakProgressCard(context, ref),
-
-                      const SizedBox(height: 40),
+                      _TopGamificationPill(),
+                      const SizedBox(height: 32),
                       _buildSectionHeader(context, 'Categories'),
                       const SizedBox(height: 20),
                       _buildCategoriesGrid(context, ref),
@@ -510,7 +522,22 @@ class DashboardScreen extends ConsumerWidget {
           itemCount: quick.length,
           itemBuilder: (context, index) {
             final c = quick[index];
-            return _CategoryCard(iconKey: c.icon, label: c.name);
+            return _CategoryCard(
+              iconKey: c.icon,
+              label: c.name,
+              onTap: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  showDragHandle: true,
+                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                  ),
+                  builder: (_) => AddExpenseSheet(initialCategoryId: c.id),
+                );
+              },
+            );
           },
         );
       },
@@ -650,11 +677,113 @@ class _GlowCircle extends StatelessWidget {
   }
 }
 
+class _TopGamificationPill extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return ref.watch(statsProvider).when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (stats) {
+        final level = GamificationCatalog.levelFor(stats);
+        final nextBadge = GamificationCatalog.nextLocked(stats);
+        final hint = nextBadge == null
+            ? 'All badges unlocked'
+            : 'Next: ${nextBadge.title}';
+
+        return GestureDetector(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const GamificationScreen()),
+            );
+          },
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 200),
+            child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: theme.brightness == Brightness.dark
+                  ? theme.cardColor
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(999),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(
+                      theme.brightness == Brightness.dark ? 0.18 : 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+              border: Border.all(
+                color: AppTheme.violetPrimary.withOpacity(0.12),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF7ED),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.local_fire_department_rounded,
+                    color: Color(0xFFEA580C),
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Lvl $level • ${stats.streakCount}d',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: theme.textTheme.titleSmall?.color ??
+                              AppTheme.textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        hint,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _CircleActionButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
+  final int badgeCount;
 
-  const _CircleActionButton({required this.icon, required this.onTap});
+  const _CircleActionButton({
+    required this.icon,
+    required this.onTap,
+    this.badgeCount = 0,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -662,31 +791,71 @@ class _CircleActionButton extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     return Container(
-      decoration: BoxDecoration(
-        color: isDark ? theme.cardColor : Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.18 : 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          customBorder: const CircleBorder(),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Icon(
-              icon,
-              color: theme.iconTheme.color ?? AppTheme.textDark,
-              size: 24,
+      decoration: const BoxDecoration(),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          AnimatedScale(
+            scale: badgeCount > 0 ? 1.05 : 1.0,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutBack,
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark ? theme.cardColor : Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(isDark ? 0.18 : 0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onTap,
+                  customBorder: const CircleBorder(),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Icon(
+                      icon,
+                      color: theme.iconTheme.color ?? AppTheme.textDark,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
+          if (badgeCount > 0)
+            Positioned(
+              right: -1,
+              top: -1,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppTheme.pinkAlert,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 18,
+                  minHeight: 18,
+                ),
+                child: Center(
+                  child: Text(
+                    badgeCount > 9 ? '9+' : '$badgeCount',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -839,10 +1008,15 @@ class _IconBox extends StatelessWidget {
 }
 
 class _CategoryCard extends StatelessWidget {
-  const _CategoryCard({required this.iconKey, required this.label});
+  const _CategoryCard({
+    required this.iconKey,
+    required this.label,
+    required this.onTap,
+  });
 
   final String iconKey;
   final String label;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -882,30 +1056,34 @@ class _CategoryCard extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: isDark ? theme.cardColor : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(isDark ? 0.16 : 0.04),
-                blurRadius: 15,
-                offset: const Offset(0, 8),
+        InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: onTap,
+          child: Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: isDark ? theme.cardColor : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(isDark ? 0.16 : 0.04),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withOpacity(0.06)
+                    : Colors.white,
+                width: 2,
               ),
-            ],
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withOpacity(0.06)
-                  : Colors.white,
-              width: 2,
             ),
-          ),
-          child: Icon(
-            icon,
-            color: AppTheme.violetPrimary,
-            size: 24,
+            child: Icon(
+              icon,
+              color: AppTheme.violetPrimary,
+              size: 24,
+            ),
           ),
         ),
         const SizedBox(height: 4),

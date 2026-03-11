@@ -20,3 +20,8 @@ final notificationHistoryServiceProvider = Provider<NotificationHistoryService>(
 final notificationHistoryProvider = FutureProvider<List<AppNotification>>((ref) async {
   return ref.watch(notificationHistoryServiceProvider).getHistory();
 });
+
+final notificationUnreadCountProvider = FutureProvider<int>((ref) async {
+  final history = await ref.watch(notificationHistoryServiceProvider).getHistory();
+  return history.where((n) => !n.isRead).length;
+});
