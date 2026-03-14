@@ -5,10 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../theme/app_theme.dart';
 import '../../budget/presentation/budget_providers.dart';
 import '../../categories/presentation/categories_providers.dart';
-import '../../../core/notifications/notification_coordinator.dart';
-import '../../gamification/presentation/gamification_providers.dart';
-import '../../quick_input/presentation/receipt_scan_sheet.dart';
-import '../../quick_input/presentation/voice_input_sheet.dart';
 import 'transactions_providers.dart';
 
 class AddExpenseSheet extends ConsumerStatefulWidget {
@@ -62,27 +58,14 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
         note: _note.text.trim().isEmpty ? null : _note.text.trim(),
       );
 
-      // Gamification + smart notifications
-      await ref.read(notificationCoordinatorProvider).evaluateAfterExpenseAdded(
-        latestAmount: amount,
-        categoryId: _cat,
-      );
-      final statsRepo = ref.read(statsRepositoryProvider);
-      final before = await statsRepo.watch().first;
-      final updated = await statsRepo.onExpenseAdded(createdAt: DateTime.now());
-      final gainedXp = updated.points - before.points;
-
       if (!mounted) return;
-
       Navigator.of(context).pop();
       final messenger = ScaffoldMessenger.of(context);
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            gainedXp > 0
-                ? 'Expense added • +$gainedXp XP'
-                : 'Expense added',
+            'Expense added',
             style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
           ),
           backgroundColor: AppTheme.violetPrimary,
@@ -258,17 +241,17 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
 
           const SizedBox(height: 24),
           Row(
-            children: [
+            children: const [
               _QuickAction(
                 icon: Icons.qr_code_scanner_rounded,
                 label: 'Scan Receipt',
-                onTap: () => _openSheet(const ReceiptScanSheet()),
+                onTap: _noop,
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               _QuickAction(
                 icon: Icons.keyboard_voice_rounded,
                 label: 'Voice Input',
-                onTap: () => _openSheet(const VoiceInputSheet()),
+                onTap: _noop,
               ),
             ],
           ),
@@ -360,3 +343,6 @@ class _QuickAction extends StatelessWidget {
     );
   }
 }
+
+void _noop() {}
+

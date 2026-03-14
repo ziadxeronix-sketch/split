@@ -6,7 +6,6 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../theme/app_theme.dart';
 import 'auth_controller.dart';
-import '../../gamification/presentation/gamification_providers.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
   const SignInScreen({super.key});
@@ -81,40 +80,34 @@ class _SignInScreenState extends ConsumerState<SignInScreen> with TickerProvider
           ),
 
           SafeArea(
-            child: FadeTransition(
-              opacity: _appearanceController,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 30),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 60), // تم تحريك اللوجو للأعلى هنا
-
-                    // شعار المشروع
-                    _buildLogo(),
-
-                    const SizedBox(height: 70),
-
-                    // العناوين
-                    _buildHeader(),
-
-                    const Spacer(flex: 1),
-
-                    // بطاقة الإدخال الزجاجية
-                    _buildGlassCard(async),
-
-                    const SizedBox(height: 20),
-
-                    // أزرار التواصل الاجتماعي
-                    _buildSocialSection(),
-
-                    const Spacer(flex: 2),
-
-                    // التبديل بين الدخول والتسجيل
-                    _buildFooter(),
-                    const SizedBox(height: 16),
-                  ],
-                ),
-              ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return FadeTransition(
+                  opacity: _appearanceController,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 30),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(height: 40),
+                          _buildLogo(),
+                          const SizedBox(height: 32),
+                          _buildHeader(),
+                          const SizedBox(height: 24),
+                          _buildGlassCard(async),
+                          const SizedBox(height: 16),
+                          _buildSocialSection(),
+                          const SizedBox(height: 16),
+                          _buildFooter(),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
 
@@ -181,13 +174,14 @@ class _SignInScreenState extends ConsumerState<SignInScreen> with TickerProvider
           ),
         ],
       ),
-      child: Form(
+            child: Form(
         key: _formKey,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (_isSignUp) ...[
               _buildInput(
+                fieldKey: const Key('fullNameField'),
                 controller: _name,
                 hint: "Full Name",
                 icon: Icons.person_outline,
@@ -205,6 +199,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> with TickerProvider
               const SizedBox(height: 14),
             ],
             _buildInput(
+              fieldKey: const Key('emailField'),
               controller: _email,
               hint: "Email Address",
               icon: Icons.alternate_email,
@@ -223,6 +218,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> with TickerProvider
             ),
             const SizedBox(height: 14),
             _buildInput(
+              fieldKey: const Key('passwordField'),
               controller: _password,
               hint: "Password",
               icon: Icons.lock_outline,
@@ -251,6 +247,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> with TickerProvider
   }
 
   Widget _buildInput({
+    Key? fieldKey,
     required TextEditingController controller,
     required String hint,
     required IconData icon,
@@ -265,6 +262,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> with TickerProvider
         borderRadius: BorderRadius.circular(16),
       ),
       child: TextFormField(
+        key: fieldKey,
         controller: controller,
         obscureText: isPassword,
         keyboardType: type,
@@ -298,6 +296,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> with TickerProvider
         ],
       ),
       child: ElevatedButton(
+        key: const Key('submitAuthButton'),
         onPressed: _submit,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
@@ -359,6 +358,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> with TickerProvider
           ),
         ),
         GestureDetector(
+          key: const Key('toggleAuthModeButton'),
           onTap: () => setState(() => _isSignUp = !_isSignUp),
           child: Text(
             _isSignUp ? "Sign In" : "Sign Up",

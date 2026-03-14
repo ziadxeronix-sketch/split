@@ -2,29 +2,94 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isSignedIn() { return request.auth != null; }
-    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+    // Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Single read admin check: no exists() + get() double-read
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+      return isSignedIn()
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    match /users/{uid} {
-      allow read, write: if isOwner(uid);
+    function hasKeysExactly(keys) {
+      return request.resource.data.keys().hasOnly(keys);
+    }
 
-      // Admins can read users list for admin panel
-      allow read: if isAdmin();
+    // Basic string validator with max length
+    function isSafeString(field, maxLen) {
+      return field is string
+        && field.size() > 0
+        && field.size() <= maxLen;
+    }
+
+    function isOptionalSafeString(field, maxLen) {
+      return !(field in request.resource.data)
+        || (request.resource.data[field] is string
+            && request.resource.data[field].size() <= maxLen);
+    }
+
+    function isPositiveAmount(field) {
+      return request.resource.data[field] is number
+        && request.resource.data[field] >= 0
+        && request.resource.data[field] <= 1000000;
+    }
+
+    match /users/{uid} {
+      // Owner can read and update own profile document with basic validation
+      allow read: if isOwner(uid) || isAdmin();
+
+      allow create, update: if isOwner(uid)
+        && hasKeysExactly(['email', 'displayName', 'photoUrl', 'role', 'createdAt', 'lastLoginAt', 'currencySymbol', 'weekStartDay'])
+        && isSafeString(request.resource.data.email, 320)
+        && isOptionalSafeString('displayName', 80)
+        && isOptionalSafeString('photoUrl', 500)
+        && request.resource.data.role in ['user', 'admin']
+        && request.resource.data.currencySymbol is string
+        && request.resource.data.currencySymbol.size() <= 5
+        && request.resource.data.weekStartDay is int
+        && request.resource.data.weekStartDay >= 0
+        && request.resource.data.weekStartDay <= 6;
+
+      // Prevent arbitrary deletes; only owner can delete their own document
+      allow delete: if isOwner(uid);
 
       match /categories/{catId} {
-        allow read, write: if isOwner(uid);
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && hasKeysExactly(['name', 'icon', 'order', 'updatedAt'])
+          && isSafeString(request.resource.data.name, 60)
+          && isSafeString(request.resource.data.icon, 40)
+          && request.resource.data.order is int
+          && request.resource.data.order >= 0
+          && request.resource.data.order <= 1000;
+        allow delete: if isOwner(uid);
       }
 
       match /budgets/{budgetId} {
-        allow read, write: if isOwner(uid);
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && hasKeysExactly(['amount', 'currencySymbol', 'period', 'updatedAt'])
+          && isPositiveAmount('amount')
+          && isSafeString(request.resource.data.currencySymbol, 5)
+          && request.resource.data.period in ['month', 'week', 'day'];
+        allow delete: if isOwner(uid);
       }
 
       match /transactions/{txId} {
-        allow read, write: if isOwner(uid);
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && hasKeysExactly(['amount', 'categoryId', 'note', 'createdAt', 'source'])
+          && isPositiveAmount('amount')
+          && isSafeString(request.resource.data.categoryId, 80)
+          && isOptionalSafeString('note', 500)
+          && request.resource.data.source in ['manual', 'voice', 'scan'];
+        allow delete: if isOwner(uid);
       }
 
       match /meta/{docId} {

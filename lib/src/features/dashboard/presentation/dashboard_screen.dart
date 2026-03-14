@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:splitbrain/src/features/gamification/domain/gamification_badges.dart';
-import 'package:splitbrain/src/features/gamification/presentation/gamification_providers.dart';
-import 'package:splitbrain/src/features/gamification/presentation/gamification_screen.dart';
 
 import '../../../core/date_utils.dart';
 import '../../../core/notifications/notification_providers.dart';
@@ -154,9 +151,7 @@ class DashboardScreen extends ConsumerWidget {
                         loading: () => _buildLoadingCard(context),
                         error: (e, _) => Text('Error: $e'),
                       ),
-                      const SizedBox(height: 20),
-                      _TopGamificationPill(),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 40),
                       _buildSectionHeader(context, 'Categories'),
                       const SizedBox(height: 20),
                       _buildCategoriesGrid(context, ref),
@@ -383,129 +378,6 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStreakProgressCard(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return ref.watch(statsProvider).when(
-      data: (stats) {
-        final nextBadge = GamificationCatalog.nextLocked(stats);
-        final level = GamificationCatalog.levelFor(stats);
-        final progress = GamificationCatalog.levelProgress(stats);
-        final unlocked = GamificationCatalog.unlockedCount(stats);
-
-        return InkWell(
-          borderRadius: BorderRadius.circular(32),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const GamificationScreen()),
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: isDark ? theme.cardColor : Colors.white,
-              borderRadius: BorderRadius.circular(32),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF1E1B4B).withOpacity(isDark ? 0.16 : 0.06),
-                  blurRadius: 40,
-                  offset: const Offset(0, 16),
-                ),
-              ],
-              border: Border.all(
-                color: Colors.black.withOpacity(isDark ? 0.10 : 0.03),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF7ED),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Icon(
-                        Icons.local_fire_department_rounded,
-                        color: Color(0xFFEA580C),
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(width: 20),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Level $level • ${stats.streakCount} Day Streak',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 19,
-                              color: theme.textTheme.titleLarge?.color ??
-                                  AppTheme.textDark,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            nextBadge == null
-                                ? 'All premium badges unlocked!'
-                                : 'Next badge: ${nextBadge.title}',
-                            style: GoogleFonts.plusJakartaSans(
-                              color: theme.textTheme.bodyMedium?.color
-                                  ?.withOpacity(0.7) ??
-                                  AppTheme.textMuted,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: Color(0xFF94A3B8),
-                      size: 28,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(100),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 12,
-                    backgroundColor: const Color(0xFFF1F5F9),
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Color(0xFF7C3AED),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _MiniInsight(
-                      label: 'Badges',
-                      value: '$unlocked / ${GamificationCatalog.all.length}',
-                    ),
-                    _MiniInsight(label: 'XP', value: '${stats.points}'),
-                    _MiniInsight(
-                      label: 'Entries',
-                      value: '${stats.totalEntries}',
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-      loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
-    );
-  }
-
   Widget _buildCategoriesGrid(BuildContext context, WidgetRef ref) {
     return ref.watch(categoriesProvider).when(
       data: (cats) {
@@ -673,103 +545,6 @@ class _GlowCircle extends StatelessWidget {
           colors: [color, color.withOpacity(0)],
         ),
       ),
-    );
-  }
-}
-
-class _TopGamificationPill extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    return ref.watch(statsProvider).when(
-      loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
-      data: (stats) {
-        final level = GamificationCatalog.levelFor(stats);
-        final nextBadge = GamificationCatalog.nextLocked(stats);
-        final hint = nextBadge == null
-            ? 'All badges unlocked'
-            : 'Next: ${nextBadge.title}';
-
-        return GestureDetector(
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const GamificationScreen()),
-            );
-          },
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 200),
-            child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: theme.brightness == Brightness.dark
-                  ? theme.cardColor
-                  : Colors.white,
-              borderRadius: BorderRadius.circular(999),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(
-                      theme.brightness == Brightness.dark ? 0.18 : 0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-              border: Border.all(
-                color: AppTheme.violetPrimary.withOpacity(0.12),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF7ED),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.local_fire_department_rounded,
-                    color: Color(0xFFEA580C),
-                    size: 18,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Lvl $level • ${stats.streakCount}d',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: theme.textTheme.titleSmall?.color ??
-                              AppTheme.textDark,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        hint,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.textMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            ),
-          ),
-        );
-      },
     );
   }
 }

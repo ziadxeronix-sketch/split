@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/firebase_providers.dart';
 import '../../../theme/app_theme.dart';
 import '../../../core/notifications/notification_coordinator.dart';
-import '../../gamification/presentation/gamification_providers.dart';
 
 import '../../budget/presentation/budget_providers.dart';
 import '../../categories/presentation/categories_providers.dart';
@@ -43,7 +42,6 @@ class _HomeShellState extends ConsumerState<HomeShell> with WidgetsBindingObserv
 
     try {
       await ref.read(categoriesRepositoryProvider).seedDefaultsIfEmpty();
-      await ref.read(statsRepositoryProvider).ensureExists();
       await ref.read(budgetRepositoryProvider).ensureDefault();
     } catch (e, s) {
       debugPrint('Data bootstrap failed: $e');

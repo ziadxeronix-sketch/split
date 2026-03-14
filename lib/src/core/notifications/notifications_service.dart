@@ -142,84 +142,29 @@ class NotificationsService {
     required String body,
     bool exceeded = false,
   }) async {
-    final category = exceeded ? 'budget_exceeded' : 'budget_near';
-    await _show(
-      id: exceeded ? budgetExceededId : budgetNearId,
-      channelId: 'budget_alerts',
-      channelName: 'Budget alerts',
-      title: title,
-      body: body,
-      category: category,
-    );
+    // Disabled: do not show OS notifications but keep history empty as well.
   }
 
   static Future<void> showOverspending({
     required String title,
     required String body,
   }) async {
-    await _show(
-      id: overspendingId,
-      channelId: 'budget_alerts',
-      channelName: 'Budget alerts',
-      title: title,
-      body: body,
-      category: 'overspending',
-    );
+    // Disabled.
   }
 
   static Future<void> showInactivity({
     required String title,
     required String body,
   }) async {
-    await _show(
-      id: inactivityId,
-      channelId: 'habit_alerts',
-      channelName: 'Habit alerts',
-      title: title,
-      body: body,
-      category: 'habit',
-    );
+    // Disabled.
   }
 
   static Future<void> scheduleDailyReminder({required int hour}) async {
-    if (!_initialized) await init();
-    await cancelDailyReminder();
-
-    try {
-      final androidPlugin = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-      await androidPlugin?.requestExactAlarmsPermission();
-    } catch (error, stack) {
-      debugPrint('Exact alarms permission request failed: $error');
-      debugPrintStack(stackTrace: stack);
-    }
-
-    await _plugin.zonedSchedule(
-      dailyReminderId,
-      'Budget check-in',
-      'Open SplitBrain and log today\'s spending to keep your budget fresh.',
-      _nextInstanceOfHour(hour),
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'habit_alerts',
-          'Habit alerts',
-          channelDescription: 'Reminders for inactivity and daily logging habits.',
-          importance: Importance.high,
-          priority: Priority.high,
-        ),
-        iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentSound: true,
-        ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time,
-    );
+    // Disabled: do not schedule local notifications.
   }
 
   static Future<void> cancelDailyReminder() async {
-    if (!_initialized) await init();
-    await _plugin.cancel(dailyReminderId);
+    // Disabled: nothing to cancel.
   }
 
   static tz.TZDateTime _nextInstanceOfHour(int hour) {
@@ -248,41 +193,6 @@ class NotificationsService {
     required String body,
     String category = 'info',
   }) async {
-    if (!_initialized) await init();
-
-    try {
-      await _historyService.addNotification(
-        AppNotification(
-          title: title,
-          body: body,
-          timestamp: DateTime.now(),
-          category: category,
-        ),
-      );
-    } catch (error, stack) {
-      debugPrint('Saving notification history failed: $error');
-      debugPrintStack(stackTrace: stack);
-    }
-
-    await _plugin.show(
-      id,
-      title,
-      body,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          channelId,
-          channelName,
-          importance: Importance.max,
-          priority: Priority.max,
-          playSound: true,
-          showWhen: true,
-        ),
-        iOS: const DarwinNotificationDetails(
-          presentAlert: true,
-          presentSound: true,
-          presentBadge: true,
-        ),
-      ),
-    );
+    // Disabled: do not record or show notifications.
   }
 }

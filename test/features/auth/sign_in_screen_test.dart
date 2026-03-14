@@ -61,7 +61,9 @@ void main() {
     await tester.pumpWidget(buildTestApp());
     await tester.pump(const Duration(milliseconds: 800));
 
-    await tester.tap(find.byKey(const Key('toggleAuthModeButton')));
+    final toggleButton = find.byKey(const Key('toggleAuthModeButton'));
+    await tester.ensureVisible(toggleButton);
+    await tester.tap(toggleButton, warnIfMissed: false);
     await tester.pump(const Duration(milliseconds: 400));
 
     await tester.enterText(find.byKey(const Key('fullNameField')), 'Ziad Mohamed');

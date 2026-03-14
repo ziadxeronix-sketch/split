@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.10.0
+  sdk: ">=3.3.0 <4.0.0"
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -38,7 +38,6 @@ dependencies:
   cloud_firestore: ^6.1.3
   firebase_auth: ^6.2.0
   firebase_messaging: ^16.0.1
-  firebase_storage: ^13.0.1
   flutter_riverpod: ^2.6.1
   go_router: ^14.6.0
   intl: ^0.20.2
@@ -46,6 +45,10 @@ dependencies:
   flutter_svg: ^2.1.0
   google_fonts: ^6.2.1
   collection: ^1.19.1
+
+  # Shared model annotations used at runtime
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
 
   # MVP add-ons
   flutter_local_notifications: ^18.0.1
@@ -68,9 +71,9 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   build_runner: ^2.4.13
   freezed: ^2.5.7
-  freezed_annotation: ^2.4.4
-  json_annotation: ^4.9.0
   json_serializable: ^6.8.0
+
+  # codegen-only dev deps
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
