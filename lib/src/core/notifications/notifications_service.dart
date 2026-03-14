@@ -75,17 +75,17 @@ class NotificationsService {
     try {
       if (Firebase.apps.isNotEmpty) {
         FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        final notification = message.notification;
-        if (notification == null) return;
-        _show(
-          id: fcmNotificationId,
-          channelId: 'budget_alerts',
-          channelName: 'System Alerts',
-          title: notification.title ?? 'New Alert',
-          body: notification.body ?? '',
-          category: 'info',
-        );
-      });
+          final notification = message.notification;
+          if (notification == null) return;
+          _show(
+            id: fcmNotificationId,
+            channelId: 'budget_alerts',
+            channelName: 'System Alerts',
+            title: notification.title ?? 'New Alert',
+            body: notification.body ?? '',
+            category: 'info',
+          );
+        });
       }
     } catch (error, stack) {
       debugPrint('FirebaseMessaging foreground listener failed: $error');
@@ -105,10 +105,10 @@ class NotificationsService {
         if (Firebase.apps.isNotEmpty) {
           final messaging = FirebaseMessaging.instance;
           final settings = await messaging.requestPermission(
-          alert: true,
-          badge: true,
-          sound: true,
-          provisional: false,
+            alert: true,
+            badge: true,
+            sound: true,
+            provisional: false,
           );
           granted = settings.authorizationStatus == AuthorizationStatus.authorized ||
               settings.authorizationStatus == AuthorizationStatus.provisional;

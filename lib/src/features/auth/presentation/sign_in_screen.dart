@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../theme/app_theme.dart';
 import 'auth_controller.dart';
+import '../../gamification/presentation/gamification_providers.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
   const SignInScreen({super.key});
@@ -186,16 +187,56 @@ class _SignInScreenState extends ConsumerState<SignInScreen> with TickerProvider
           mainAxisSize: MainAxisSize.min,
           children: [
             if (_isSignUp) ...[
-              _buildInput(controller: _name, hint: "Full Name", icon: Icons.person_outline),
+              _buildInput(
+                controller: _name,
+                hint: "Full Name",
+                icon: Icons.person_outline,
+                validator: (v) {
+                  if (!_isSignUp) return null;
+                  if (v == null || v.trim().isEmpty) {
+                    return 'Please enter your name';
+                  }
+                  if (v.trim().length < 3) {
+                    return 'Name is too short';
+                  }
+                  return null;
+                },
+              ),
               const SizedBox(height: 14),
             ],
-            _buildInput(controller: _email, hint: "Email Address", icon: Icons.alternate_email, type: TextInputType.emailAddress),
+            _buildInput(
+              controller: _email,
+              hint: "Email Address",
+              icon: Icons.alternate_email,
+              type: TextInputType.emailAddress,
+              validator: (v) {
+                final value = v?.trim() ?? '';
+                if (value.isEmpty) {
+                  return 'Email is required';
+                }
+                final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+                if (!emailRegex.hasMatch(value)) {
+                  return 'Enter a valid email address';
+                }
+                return null;
+              },
+            ),
             const SizedBox(height: 14),
             _buildInput(
               controller: _password,
               hint: "Password",
               icon: Icons.lock_outline,
               isPassword: _obscurePassword,
+              validator: (v) {
+                final value = v ?? '';
+                if (value.isEmpty) {
+                  return 'Password is required';
+                }
+                if (value.length < 8) {
+                  return 'Use at least 8 characters';
+                }
+                return null;
+              },
               suffix: IconButton(
                 icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, size: 18),
                 onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
@@ -216,6 +257,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> with TickerProvider
     bool isPassword = false,
     Widget? suffix,
     TextInputType? type,
+    String? Function(String?)? validator,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -226,6 +268,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> with TickerProvider
         controller: controller,
         obscureText: isPassword,
         keyboardType: type,
+        validator: validator,
         style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600, fontSize: 14),
         decoration: InputDecoration(
           hintText: hint,
@@ -333,10 +376,35 @@ class _SignInScreenState extends ConsumerState<SignInScreen> with TickerProvider
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     final ctrl = ref.read(authControllerProvider.notifier);
-    if (_isSignUp) {
-      await ctrl.signUp(_email.text.trim(), _password.text, _name.text.trim());
-    } else {
-      await ctrl.signIn(_email.text.trim(), _password.text);
+    try {
+      if (_isSignUp) {
+        await ctrl.signUp(_email.text.trim(), _password.text, _name.text.trim());
+
+        // بعد إنشاء الحساب: تسجيل خروج وتحويل المستخدم لواجهة تسجيل الدخول مع رسالة واضحة
+        await ctrl.signOut();
+        // تأكد من مسح بيانات gamification القديمة من الذاكرة لأي حساب سابق
+        ref.invalidate(statsRepositoryProvider);
+        ref.invalidate(statsProvider);
+        if (!mounted) return;
+        setState(() {
+          _isSignUp = false;
+          _password.clear();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Account created successfully. Please sign in.',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+            ),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+        );
+      } else {
+        await ctrl.signIn(_email.text.trim(), _password.text);
+      }
+    } catch (_) {
+      // الأخطاء تُدار بالفعل عبر AsyncValue في authController، هنا فقط نتأكد أن UI لا ينهار
     }
   }
 }

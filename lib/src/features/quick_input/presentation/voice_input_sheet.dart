@@ -54,21 +54,30 @@ class _VoiceInputSheetState extends ConsumerState<VoiceInputSheet> {
     );
   }
 
-  (double? amount, String? catId) _parse(String s, List<String> categoryIds) {
+  (double? amount, String? catId) _parse(String s, List<String> categoryIds, Map<String, String> keywordsToCat) {
     final normalized = s.toLowerCase();
     final m = RegExp(r'(\d+[\.,]?\d*)').firstMatch(normalized);
     final amount = m == null ? null : double.tryParse(m.group(1)!.replaceAll(',', '.'));
 
     String? cat;
-    if (normalized.contains('coffee') || normalized.contains('قهوة')) cat = 'coffee';
-    if (normalized.contains('food') || normalized.contains('lunch') || normalized.contains('dinner') || normalized.contains('اكل')) {
-      cat = 'food';
+
+    // 1) حاول تطابق كلمات مفتاحية مخصصة بالكategories الحالية
+    for (final entry in keywordsToCat.entries) {
+      if (normalized.contains(entry.key)) {
+        cat = entry.value;
+        break;
+      }
     }
-    if (normalized.contains('grocery') || normalized.contains('supermarket') || normalized.contains('بقالة')) cat = 'groceries';
-    if (normalized.contains('transport') || normalized.contains('uber') || normalized.contains('train') || normalized.contains('مواصلات')) {
-      cat = 'transport';
+
+    // 2) fallback على أسماء الـ categories أو الـ id داخل النص
+    if (cat == null) {
+      for (final id in categoryIds) {
+        if (normalized.contains(id.toLowerCase())) {
+          cat = id;
+          break;
+        }
+      }
     }
-    if (normalized.contains('shopping') || normalized.contains('mall') || normalized.contains('شراء')) cat = 'shopping';
 
     if (cat != null && !categoryIds.contains(cat)) cat = null;
     return (amount, cat);
@@ -77,7 +86,33 @@ class _VoiceInputSheetState extends ConsumerState<VoiceInputSheet> {
   Future<void> _save() async {
     final cats = ref.read(categoriesProvider).asData?.value ?? const [];
     final ids = cats.map((e) => e.id).toList();
-    final parsed = _parse(_text, ids);
+
+    // جهّز خريطة كلمات مفتاحية إنجليزية فقط → id كاتيجوري (يدوي + من أسماء الكاتيجوري)
+    final Map<String, String> keywords = {
+      'coffee': 'coffee',
+      'food': 'food',
+      'lunch': 'food',
+      'dinner': 'food',
+      'grocery': 'groceries',
+      'groceries': 'groceries',
+      'supermarket': 'groceries',
+      'transport': 'transport',
+      'uber': 'transport',
+      'taxi': 'transport',
+      'train': 'transport',
+      'bus': 'transport',
+      'shopping': 'shopping',
+      'mall': 'shopping',
+      'pharmacy': 'health',
+    };
+
+    // ضيف أسماء الكاتيجوريز الحالية ككلمات مفتاحية
+    for (final c in cats) {
+      final nameKey = c.name.toLowerCase();
+      keywords[nameKey] = c.id;
+    }
+
+    final parsed = _parse(_text, ids, keywords);
     if (parsed.$1 == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Could not detect an amount.'), backgroundColor: AppTheme.pinkAlert),
@@ -96,12 +131,32 @@ class _VoiceInputSheetState extends ConsumerState<VoiceInputSheet> {
             source: 'voice',
           );
       await ref.read(notificationCoordinatorProvider).evaluateAfterExpenseAdded(
-            latestAmount: amount,
-            categoryId: catId,
-          );
-      await ref.read(statsRepositoryProvider).onExpenseAdded(createdAt: DateTime.now());
+        latestAmount: amount,
+        categoryId: catId,
+      );
+      final statsRepo = ref.read(statsRepositoryProvider);
+      final before = await statsRepo.watch().first;
+      final updated = await statsRepo.onExpenseAdded(createdAt: DateTime.now());
+      final gainedXp = updated.points - before.points;
       if (!mounted) return;
       Navigator.pop(context);
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            gainedXp > 0
+                ? 'Voice expense added • +$gainedXp XP'
+                : 'Voice expense added',
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+          ),
+          backgroundColor: AppTheme.violetPrimary,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          duration: const Duration(seconds: 3),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
