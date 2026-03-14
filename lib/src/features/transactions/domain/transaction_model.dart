@@ -31,7 +31,7 @@ class ExpenseTransaction {
     return ExpenseTransaction(
       id: doc.id,
       amount: (data['amount'] as num?)?.toDouble() ?? 0,
-      categoryId: (data['catId'] as String?) ?? 'other',
+      categoryId: (data['categoryId'] as String?) ?? (data['catId'] as String?) ?? 'other',
       note: data['note'] as String?,
       source: (data['source'] as String?) ?? 'manual',
       createdAt: (ts is Timestamp) ? ts.toDate() : DateTime.now(),

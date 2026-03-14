@@ -11,9 +11,10 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
-    // Single read admin check: no exists() + get() double-read
+    // Single read admin check; safe when user doc does not exist yet
     function isAdmin() {
       return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
@@ -77,7 +78,7 @@ service cloud.firestore {
           && hasKeysExactly(['amount', 'currencySymbol', 'period', 'updatedAt'])
           && isPositiveAmount('amount')
           && isSafeString(request.resource.data.currencySymbol, 5)
-          && request.resource.data.period in ['month', 'week', 'day'];
+          && request.resource.data.period in ['month', 'week', 'day', 'weekly', 'monthly'];
         allow delete: if isOwner(uid);
       }
 

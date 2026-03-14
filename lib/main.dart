@@ -1,20 +1,25 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+import 'firebase_options.dart';
+import 'src/app.dart';
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('iOS app started'),
-        ),
-      ),
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    ).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => throw Exception('Firebase init timeout'),
     );
+  } catch (e, st) {
+    debugPrint('Firebase init failed: $e');
+    debugPrintStack(stackTrace: st);
+    // استمر في فتح التطبيق؛ قد تظهر أخطاء في تسجيل الدخول
   }
+
+  runApp(const ProviderScope(child: SplitBrainApp()));
 }

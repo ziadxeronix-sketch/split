@@ -79,8 +79,8 @@ class TransactionsRepository {
 
     await _col(uid).doc(id).set({
       'amount': amount,
-      'catId': categoryId,
-      'note': note,
+      'categoryId': categoryId,
+      'note': note?.trim().isEmpty ?? true ? '' : (note!.trim()),
       'source': source,
       'createdAt': FieldValue.serverTimestamp(),
     });

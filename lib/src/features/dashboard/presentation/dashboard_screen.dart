@@ -149,7 +149,7 @@ class DashboardScreen extends ConsumerWidget {
                       summaryAsync.when(
                         data: (s) => _buildMainPremiumCard(s),
                         loading: () => _buildLoadingCard(context),
-                        error: (e, _) => Text('Error: $e'),
+                        error: (e, _) => _buildFirestoreErrorCard(context, e),
                       ),
                       const SizedBox(height: 40),
                       _buildSectionHeader(context, 'Categories'),
@@ -349,6 +349,55 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildFirestoreErrorCard(BuildContext context, Object error) {
+    final isPermissionDenied = error.toString().contains('permission-denied');
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 24),
+      decoration: BoxDecoration(
+        color: AppTheme.pinkAlert.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.pinkAlert.withOpacity(0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.cloud_off_rounded, color: AppTheme.pinkAlert, size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  isPermissionDenied
+                      ? 'Firestore: لا توجد صلاحية للوصول'
+                      : 'خطأ في الاتصال بقاعدة البيانات',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: AppTheme.textDark,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            isPermissionDenied
+                ? 'انشر قواعد Firestore من المشروع: Firebase Console → Firestore → Rules → Publish، أو نفّذ: firebase deploy --only firestore:rules'
+                : 'تحقق من الاتصال بالإنترنت وإعدادات Firebase.',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              height: 1.4,
+              color: AppTheme.textDark.withOpacity(0.8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildProgressBar(double progress) {
     return Container(
       height: 10,
@@ -414,7 +463,7 @@ class DashboardScreen extends ConsumerWidget {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (e, _) => _buildFirestoreErrorCard(context, e),
     );
   }
 

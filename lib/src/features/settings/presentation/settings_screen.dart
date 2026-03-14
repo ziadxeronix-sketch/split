@@ -10,7 +10,6 @@ import '../../budget/presentation/budget_providers.dart';
 import '../../categories/presentation/categories_providers.dart';
 import '../../dashboard/presentation/dashboard_providers.dart';
 import '../../transactions/presentation/transactions_providers.dart';
-import '../../gamification/presentation/gamification_providers.dart';
 import 'appearance_settings_sheet.dart';
 import 'notifications_settings_sheet.dart';
 
@@ -28,8 +27,6 @@ class SettingsScreen extends ConsumerWidget {
     ref.invalidate(categoriesProvider);
     ref.invalidate(dashboardRangeProvider);
     ref.invalidate(dashboardSummaryProvider);
-    ref.invalidate(statsRepositoryProvider);
-    ref.invalidate(statsProvider);
   }
 
   @override

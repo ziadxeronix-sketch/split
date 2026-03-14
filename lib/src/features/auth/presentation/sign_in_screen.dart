@@ -382,9 +382,6 @@ class _SignInScreenState extends ConsumerState<SignInScreen> with TickerProvider
 
         // بعد إنشاء الحساب: تسجيل خروج وتحويل المستخدم لواجهة تسجيل الدخول مع رسالة واضحة
         await ctrl.signOut();
-        // تأكد من مسح بيانات gamification القديمة من الذاكرة لأي حساب سابق
-        ref.invalidate(statsRepositoryProvider);
-        ref.invalidate(statsProvider);
         if (!mounted) return;
         setState(() {
           _isSignUp = false;
