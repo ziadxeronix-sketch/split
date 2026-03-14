@@ -33,6 +33,15 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Firebase config (local only, never commit)
+.firebaserc
+firebase.json
+android/app/google-services.json
+lib/firebase_options.dart
+
+# Leftover copies (do not commit)
+analysis_options - Copie.yaml
+
 # Symbolication related
 app.*.symbols
 
